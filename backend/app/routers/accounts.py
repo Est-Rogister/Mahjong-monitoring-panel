@@ -45,6 +45,19 @@ async def create_account(
     await db.commit()
     await db.refresh(db_account)
     
+    # 自动抓取玩家数据
+    try:
+        player_data = await scraper.fetch_player_data(account.player_id, db=db)
+        db_account.nickname = player_data.get("nickname")
+        db_account.last_online = player_data.get("last_online")
+        db_account.max_rank = player_data.get("max_rank")
+        db_account.current_rank = player_data.get("current_rank")
+        await db.commit()
+        await db.refresh(db_account)
+    except Exception as e:
+        # 抓取失败不影响账号创建，但记录日志
+        print(f"创建账号时抓取数据失败 (player_id={account.player_id}): {e}")
+    
     return db_account
 
 

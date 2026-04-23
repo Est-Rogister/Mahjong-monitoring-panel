@@ -412,15 +412,37 @@ class AmaeKoromoScraper:
     
     async def search_players(self, nickname: str, limit: int = 20) -> List[Dict[str, Any]]:
         """
-        根据昵称搜索玩家
+        根据昵称或ID搜索玩家
         
         Args:
-            nickname: 玩家昵称（支持模糊搜索）
+            nickname: 玩家昵称（支持模糊搜索）或玩家ID（纯数字）
             limit: 返回结果数量限制
         
         Returns:
             玩家列表，包含 player_id 和 nickname
         """
+        # 如果输入是纯数字，当作玩家ID直接查询
+        if nickname.isdigit():
+            try:
+                base_url = "https://5-data.amae-koromo.com/api/v2/pl4"
+                start_time = 1262304000000
+                end_time = int(datetime.now().timestamp() * 1000)
+                stats_url = f"{base_url}/player_stats/{nickname}/{start_time}/{end_time}"
+                
+                params = {"mode": 12, "tag": 493203}
+                stats_data = await self._fetch_with_retry(stats_url, params)
+                
+                level = stats_data.get("level", {})
+                return [{
+                    "player_id": nickname,
+                    "nickname": stats_data.get("nickname", "未知"),
+                    "rank": self._parse_level_to_rank(level.get("id", 0)),
+                    "score": level.get("score", 0),
+                    "latest_timestamp": stats_data.get("latest_timestamp")
+                }]
+            except Exception:
+                return []
+        
         # 使用正确的搜索 API
         url = f"https://5-data.amae-koromo.com/api/v2/pl4/search_player/{nickname}"
         
